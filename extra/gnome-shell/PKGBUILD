@@ -1,55 +1,67 @@
-# $Id: PKGBUILD 211255 2014-04-18 11:39:13Z heftig $
-# Maintainer: Ionut Biru <ibiru@archlinux.org>
+# Maintainer: Jan Alexander Steffens (heftig) <jan.steffens@gmail.com>
+# Contributor: Ionut Biru <ibiru@archlinux.org>
 # Contributor: Flamelab <panosfilip@gmail.com
 
 pkgname=gnome-shell
-pkgver=3.12.1
+pkgver=3.32.2+11+g1c6abf378
 pkgrel=1
-pkgdesc="The next generation GNOME Shell"
-arch=(i686 x86_64)
-url="http://live.gnome.org/GnomeShell"
+epoch=1
+pkgdesc="Next generation desktop shell"
+url="https://wiki.gnome.org/Projects/GnomeShell"
+arch=(x86_64)
 license=(GPL2)
-depends=(accountsservice caribou gcr gjs gnome-bluetooth gnome-menus upower
-         gnome-session gnome-settings-daemon gnome-themes-standard gsettings-desktop-schemas
-         libcanberra-pulse libcroco libgdm libsecret mutter mutter-wayland network-manager-applet
-         telepathy-logger telepathy-mission-control unzip gstreamer)
-makedepends=(intltool gtk-doc gnome-control-center evolution-data-server)
+depends=(accountsservice gcr gjs gnome-bluetooth upower gnome-session gnome-settings-daemon
+         gnome-themes-extra gsettings-desktop-schemas libcanberra-pulse libcroco libgdm libsecret
+         mutter nm-connection-editor unzip gstreamer libibus)
+makedepends=(gtk-doc gnome-control-center evolution-data-server gobject-introspection git meson
+             sassc)
 optdepends=('gnome-control-center: System settings'
             'evolution-data-server: Evolution calendar integration')
-install=gnome-shell.install
 groups=(gnome)
-source=(http://ftp.gnome.org/pub/GNOME/sources/$pkgname/${pkgver:0:4}/$pkgname-$pkgver.tar.xz
-        nm-libexecdir.patch
-        faster-popup.patch)
-sha256sums=('d5a475f390d992de03ccf8ffeafec90595da700594eba9fc0688cbb1652b5516'
-            'e5bb10ad2e5c3e0fde3d05babd1bfdda701e553e02d493f7e54cb7832ce7e607'
-            '0dfa3b35618479ce00cacce958049be2e3d272e1e2558935f5ad8cf35e4baa76')
+install=gnome-shell.install
+_commit=1c6abf37855cd4f834569b6db32d32c1d8876f2a  # gnome-3-32
+source=("git+https://gitlab.gnome.org/GNOME/gnome-shell.git#commit=$_commit"
+        "git+https://gitlab.gnome.org/GNOME/libgnome-volume-control.git"
+        0001-tweener-Remove-handlers-on-target.patch
+        0001-js-ui-Use-captured-event-nonmotion.patch
+        0001-js-ui-Instant-switcher-popup.patch)
+sha256sums=('SKIP'
+            'SKIP'
+            '241bea1273982bc97a58d0e25d610c6cbbc3e3be72a203015826dc599b3303c0'
+            '27b0e188bc25e59a4907e326bf890ac3e5164c660cf67366394d91000d5cee0c'
+            'cfc1b3ee7bdfecb4df409a0a1b7b447364f35c67779091d07df5bd9ce3402c90')
+
+pkgver() {
+  cd $pkgname
+  git describe --tags | sed 's/-/+/g'
+}
 
 prepare() {
-  cd $pkgname-$pkgver
+  cd $pkgname
 
-  # FS#30747 FS#32730 Problems due to libexecdir different from NM
-  patch -Np1 -i ../nm-libexecdir.patch
-  patch -Np1 -i ../faster-popup.patch
+  # fix gjs errors
+  git apply -3 ../0001-tweener-Remove-handlers-on-target.patch   # !4
+  git cherry-pick -n aec015d5ca14c7e28355f3ef9520b0f01280a51f    # !190
+  git cherry-pick -n 2ef883dcada125bd8d5e54d7020c26cc3ec7e4f7    # !190
+
+  # reduce overhead moving cursor or windows
+  git apply -3 ../0001-js-ui-Use-captured-event-nonmotion.patch  # !276
+
+  git apply -3 ../0001-js-ui-Instant-switcher-popup.patch
+
+  git submodule init
+  git config --local submodule.subprojects/gvc.url "$srcdir/libgnome-volume-control"
+  git submodule update
 }
 
 build() {
-  cd $pkgname-$pkgver
-  PYTHON=/usr/bin/python2 ./configure --prefix=/usr --sysconfdir=/etc \
-      --libexecdir=/usr/lib/gnome-shell \
-      --localstatedir=/var --disable-static \
-      --disable-schemas-compile
-
-  # https://bugzilla.gnome.org/show_bug.cgi?id=655517
-  sed -i -e 's/ -shared / -Wl,-O1,--as-needed\0/g' libtool
-
-  make
+  arch-meson $pkgname build -D gtk_doc=true
+  ninja -C build
 }
 
 package() {
-  cd $pkgname-$pkgver
-  make DESTDIR="$pkgdir" install
+  DESTDIR="$pkgdir" meson install -C build
 
-  # Must exist; FS#37412
-  mkdir -p "$pkgdir/usr/share/gnome-shell/modes"
+  # https://bugs.archlinux.org/task/37412
+  mkdir "$pkgdir/usr/share/gnome-shell/modes"
 }

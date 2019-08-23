@@ -1,0 +1,25 @@
+From 451563a0f57bd0ec6d0747c035b1436b66cd4b63 Mon Sep 17 00:00:00 2001
+From: Jeremy Attali <jeremy.attali@gmail.com>
+Date: Thu, 22 Aug 2019 23:10:17 -0400
+Subject: [PATCH] js/ui: Instant switcher popup
+
+---
+ js/ui/switcherPopup.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/js/ui/switcherPopup.js b/js/ui/switcherPopup.js
+index c28c22910..3bb209016 100644
+--- a/js/ui/switcherPopup.js
++++ b/js/ui/switcherPopup.js
+@@ -6,7 +6,7 @@ const Mainloop = imports.mainloop;
+ const Main = imports.ui.main;
+ const Tweener = imports.ui.tweener;
+ 
+-var POPUP_DELAY_TIMEOUT = 150; // milliseconds
++var POPUP_DELAY_TIMEOUT = 0; // milliseconds
+ 
+ var POPUP_SCROLL_TIME = 0.10; // seconds
+ var POPUP_FADE_OUT_TIME = 0.1; // seconds
+-- 
+2.23.0
+
