@@ -1,0 +1,8 @@
+# NZXT Kraken X (X42, X52, X62 or X72)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1e71", ATTRS{idProduct}=="170e", GROUP="users", MODE="0666"
+# NZXT Kraken M22
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1e71", ATTRS{idProduct}=="1715", GROUP="users", MODE="0666"
+# NZXT Smart Device
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1e71", ATTRS{idProduct}=="1714", GROUP="users", MODE="0666"
+# NZXT Grid+ V3
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="1e71", ATTRS{idProduct}=="1711", GROUP="users", MODE="0666"

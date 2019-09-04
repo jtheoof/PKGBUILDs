@@ -1,0 +1,17 @@
+# Maintainer: Jeremy Attali <jeremy.attali@gmail.com>
+
+pkgname=nzxt-udev
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="udev rules for NZXT devices (Fans and Pumps)"
+arch=('any')
+url="https://www.nzxt.com/"
+depends=(udev)
+source=('99-nzxt.rules')
+sha256sums=('c28c8642ff6a93f66a84dc12a72fe416468af782b9f784023990b8c94d1f61bd')
+
+package() {
+  install -d "${pkgdir}/usr/lib/udev/rules.d"
+
+  install -m644 "${srcdir}/99-nzxt.rules" "${pkgdir}/usr/lib/udev/rules.d/99-nzxt.rules"
+}
