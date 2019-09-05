@@ -1,0 +1,35 @@
+# Maintainer: Jeremy Attali <jeremy.attali@gmail.com>
+
+pkgname=system-backup
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Custom backup script to backup my Arch Linux based system"
+arch=('any')
+url="https://github.com/jtheoof/PKGBUILDs"
+depends=(tar)
+source=(
+  'system-backup'
+  'system-backup.service'
+  'system-backup.timer'
+  'ignore.txt'
+)
+sha256sums=(
+  'ed2487336490e9bad7be7e9d84cc31cd2ba1ec31284eb201d6cb39634b501069'
+  'f9b90a46a5490295897145299a73584202573793352f01e08c4701f4f08555f4'
+  '5d01af240cb3c1de73d1c9e74371708dfb4bc98d1cb72242e8f6a7536d899923'
+  '0c66c335898a28abd684ffda707afa1e28f123e8279bca5064cc1a3ebc01acd3'
+)
+
+package() {
+  install -d "${pkgdir}/opt/bak"
+  install -d "${pkgdir}/usr/bin"
+  install -d "${pkgdir}/usr/share/${pkgname}"
+  install -d "${pkgdir}/usr/lib/systemd/system/${pkgname}"
+
+  install -m755 "${srcdir}/${pkgname}" "${pkgdir}/usr/bin/${pkgname}"
+  install -m644 "${srcdir}/ignore.txt" "${pkgdir}/usr/share/${pkgname}/ignore.txt"
+  install -m644 "${srcdir}/${pkgname}.timer" "${pkgdir}/usr/lib/systemd/system/${pkgname}.timer"
+  install -m644 "${srcdir}/${pkgname}.service" "${pkgdir}/usr/lib/systemd/system/${pkgname}.service"
+
+  chmod 755 "${pkgdir}/opt/bak"
+}

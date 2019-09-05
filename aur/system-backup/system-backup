@@ -1,0 +1,31 @@
+#!/bin/bash
+# full system backup
+
+# Check if root
+if [[ $EUID -ne 0 ]]; then
+  echo "This script must be run as root"
+  exit 1
+fi
+
+# Backup destination
+bak_dest=/opt/bak
+
+# Labels for backup name
+hostname=$(hostname)
+kernel_release=$(uname -r)
+date=$(date "+%F")
+bak_file="$bak_dest/$kernel_release-$hostname-$date.tar.gz"
+
+# Exclude file location
+prog=${0##*/} # Program name from filename
+exclude_file="/usr/share/$prog/ignore.txt"
+
+# -p and --xattrs store all permissions and extended attributes.
+# Without both of these, many programs will stop working!
+# It is safe to remove the verbose (-v) flag. If you are using a
+# slow terminal, this can greatly speed up the backup process.
+tar --exclude-from=$exclude_file --xattrs -czpvf $bak_file /
+
+# Delete files older than 7 days.
+# Do it after the backup has run, in case the backup fails.
+find $bak_dest -type f -name '*.tar.gz' -mtime +7 -exec rm -f {} \;

@@ -1,0 +1,23 @@
+# Not old backups
+/opt/bak/*
+
+# Not temporary files
+/tmp/*
+
+# Not the cache directories
+/var/cache/*
+
+# Not the temp directories
+/var/tmp/*
+
+# Not the systemd coredumps
+/var/lib/systemd/coredump/*
+
+# Not the system mounts
+/dev/*
+/proc/*
+/run/*
+/sys/*
+
+# Not the home directory
+/home/*

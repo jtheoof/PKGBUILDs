@@ -1,0 +1,13 @@
+[Unit]
+Description=Backup system
+RequiresMountsFor=/
+ConditionACPower=true
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/system-backup
+
+# performance options
+Nice=19
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
