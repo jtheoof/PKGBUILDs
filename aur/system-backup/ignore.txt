@@ -4,6 +4,9 @@
 # Not temporary files
 /tmp/*
 
+# Not mount folder
+/mnt/*
+
 # Not the cache directories
 /var/cache/*
 
