@@ -1,0 +1,38 @@
+# Maintainer: Your Name <your.email@example.com>
+pkgname=putioarr
+_pkgname=putioarr
+pkgver=0.5.36
+pkgrel=1
+pkgdesc="Proxy that allows put.io to be used as a download client for sonarr/radarr/whisparr. The proxy uses the Transmission protocol."
+arch=('x86_64')
+url="https://github.com/wouterdebie/putioarr"
+license=('MIT')
+makedepends=('rust' 'cargo')
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/wouterdebie/putioarr/archive/v${pkgver}.tar.gz"
+        config.toml
+        putioarr.service
+        putioarr.sysusers
+        putioarr.tmpfiles)
+sha256sums=('3b43182d7873fc2401df293a2591bda30324175486764987b23076cee7697277'
+            '6bac6713d6d195176d1c9ab2b964851e6c8a597a0eddb3f0cf5a6b4219dffde3'
+            '89da86dbf0c720b27aa35be4413f94f639f6d830f303e35639b39f3b02eba760'
+            'f09d39742f17161ffd233dad1dc3d2ede565ebb03f8a18b3dcd22098d68be30a'
+            '3275d6ff056ea8bf17f1988cf707e3368d4fba90b1cc652b5853e3330e4002f5')
+provides=('putioarr')
+conflicts=('putioarr')
+
+build() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR="target"
+  cargo build --release
+}
+
+package() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+  install -Dm755 "target/release/putioarr" "$pkgdir/usr/bin/putioarr"
+  install -Dm644 "$srcdir/config.toml" "$pkgdir/etc/putioarr/config.toml"
+  install -Dm644 "$srcdir/$pkgname.service" "$pkgdir/usr/lib/systemd/system/putioarr.service"
+  install -Dm644 "$srcdir/$pkgname.sysusers" "$pkgdir/usr/lib/sysusers.d/putioarr.conf"
+  install -Dm644 "$srcdir/$pkgname.tmpfiles" "$pkgdir/usr/lib/tmpfiles.d/putioarr.conf"
+}

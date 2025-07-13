@@ -1,0 +1,17 @@
+[Unit]
+Description=Put.io Proxy
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=putioarr
+Group=media
+Type=simple
+ExecStart=/usr/bin/putioarr run -c /var/lib/putioarr/config.toml
+NoNewPrivileges=true
+MemoryDenyWriteExecute=true
+ProtectSystem=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

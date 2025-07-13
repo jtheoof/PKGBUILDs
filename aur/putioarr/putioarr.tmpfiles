@@ -1,0 +1,2 @@
+d /var/lib/putioarr 0750 putioarr media - -
+C /var/lib/putioarr/config.toml 0640 putioarr media - /etc/putioarr/config.toml
