@@ -1,0 +1,2 @@
+d /var/lib/gandi-automatic-dns           0700 gandi-automatic-dns gandi-automatic-dns - -
+f /var/lib/gandi-automatic-dns/.gandiapi 0600 gandi-automatic-dns gandi-automatic-dns - "PUT_YOUR_PERSONAL_ACCESS_TOKEN_HERE"

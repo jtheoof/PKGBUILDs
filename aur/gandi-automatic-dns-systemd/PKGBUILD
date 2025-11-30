@@ -8,26 +8,22 @@ pkgrel=1
 pkgdesc="systemd files to automate DNS updates for gandi-automate-dns package"
 arch=('any')
 url="https://github.com/brianreumere/gandi-automatic-dns/"
-backup=("etc/gandi-automatic-dns/.gandiapi")
 source=(
-  'gandiapi'
   'gandi-automatic-dns.service'
   'gandi-automatic-dns.sysusers'
   'gandi-automatic-dns.timer'
+  'gandi-automatic-dns.tmpfiles'
 )
 sha256sums=(
-  '68b85879849d45c151995360c922cba2903df3a4ef689258473fa017a1a715a3'
-  'f44d436d4437a1d8e17e4e3ab3b41db7d9c7811ad3737c9eb9c1fd3fccba07e0'
-  '50c1583129ee6c813d1a63ba8df6b384384a018764fed6b148043040be033f07'
+  '3859b1e0c16cb347d72779a6331e164941e8fac3ded1c28505ba7745ac6e3e67'
+  '60b844d82673e3a8d351533446adb0f3b60f27159c222f32b6fe1aca8a385f67'
   '2d205965806831ebf4bad7ece8cb87635e7ce86cdcca9b2dfd8244c0919de253'
+  '05b168ff19c3c70c713f4768a5dc13851ed410b4884992a2b7ba16473c576466'
 )
 
 package() {
   install -Dm644 "${_pkgname}.timer" "${pkgdir}/usr/lib/systemd/system/${_pkgname}.timer"
   install -Dm644 "${_pkgname}.service" "${pkgdir}/usr/lib/systemd/system/${_pkgname}.service"
   install -Dm644 "${_pkgname}.sysusers" "${pkgdir}/usr/lib/sysusers.d/${_pkgname}.conf"
-  
-  # Add the example config
-  mkdir -m600 -p "${pkgdir}/etc/${_pkgname}"
-  install -Dm600 gandiapi "${pkgdir}/etc/${_pkgname}/.gandiapi"
+  install -Dm644 "${_pkgname}.tmpfiles" "${pkgdir}/usr/lib/tmpfiles.d/${_pkgname}.conf"
 }

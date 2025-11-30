@@ -5,7 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/gad
+User=gandi-automatic-dns
+Group=gandi-automatic-dns
+ExecStart=/usr/bin/gad -d jtheoof.me -r A
 
 [Install]
 WantedBy=multi-user.target

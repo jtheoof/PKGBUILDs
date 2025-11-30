@@ -1,1 +1,3 @@
-u gandi-automatic-dns - "Gandi LiveDNS updater" /etc/gandi-automatic-dns
+g gandi-automatic-dns - -
+u gandi-automatic-dns - "Gandi LiveDNS updater" /var/lib/gandi-automatic-dns -
+m gandi-automatic-dns gandi-automatic-dns
