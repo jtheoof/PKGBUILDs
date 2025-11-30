@@ -1,0 +1,33 @@
+
+# Maintainer: Jeremy Attali <contact@jtheoof.me>
+
+pkgname=gandi-automatic-dns-systemd
+_pkgname=${pkgname%-systemd}
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="systemd files to automate DNS updates for gandi-automate-dns package"
+arch=('any')
+url="https://github.com/brianreumere/gandi-automatic-dns/"
+backup=("etc/gandi-automatic-dns/.gandiapi")
+source=(
+  'gandiapi'
+  'gandi-automatic-dns.service'
+  'gandi-automatic-dns.sysusers'
+  'gandi-automatic-dns.timer'
+)
+sha256sums=(
+  '68b85879849d45c151995360c922cba2903df3a4ef689258473fa017a1a715a3'
+  'f44d436d4437a1d8e17e4e3ab3b41db7d9c7811ad3737c9eb9c1fd3fccba07e0'
+  'd800cd8fe1b346e748bb57d9d3e0e58bd6c0ce22e13ed971614b8d3402ba1497'
+  '2d205965806831ebf4bad7ece8cb87635e7ce86cdcca9b2dfd8244c0919de253'
+)
+
+package() {
+  install -Dm644 "${_pkgname}.timer" "${pkgdir}/usr/lib/systemd/system/${_pkgname}.timer"
+  install -Dm644 "${_pkgname}.service" "${pkgdir}/usr/lib/systemd/system/${_pkgname}.service"
+  install -Dm644 "${_pkgname}.sysusers" "${pkgdir}/usr/lib/sysusers.d/${_pkgname}.conf"
+  
+  # Add the example config
+  mkdir -m600 -p "${pkgdir}/etc/${_pkgname}"
+  install -Dm600 gandiapi "${pkgdir}/etc/${_pkgname}/.gandiapi"
+}

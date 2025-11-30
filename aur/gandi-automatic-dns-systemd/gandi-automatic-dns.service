@@ -1,0 +1,11 @@
+[Unit]
+Description=Renew Gandi DNS automatically
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/gad
+
+[Install]
+WantedBy=multi-user.target
