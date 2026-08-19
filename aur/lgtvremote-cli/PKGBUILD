@@ -1,0 +1,24 @@
+# Maintainer: Your Name <your.email@example.com>
+pkgname=lgtvremote-cli
+_pkgname=lgtvremote-cli
+pkgver=1.5.0
+pkgrel=1
+pkgdesc="Command-line interface for controlling LG webOS TVs over local network via SSAP/WebSocket"
+arch=('any')
+url="https://github.com/griches/lgtvremote-cli"
+license=('MIT')
+depends=('python>=3.9')
+makedepends=('python-build' 'python-installer' 'python-setuptools' 'python-wheel')
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/griches/lgtvremote-cli/archive/v${pkgver}.tar.gz")
+sha256sums=('4e8b3e83b0af802a47eb28297a81c2c007b4d7cd1fd0e24c667586ce588d9f03')
+
+build() {
+  cd "${srcdir}/${_pkgname}-${pkgver}"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "${srcdir}/${_pkgname}-${pkgver}"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
