@@ -1,0 +1,8 @@
+post_install() {
+  echo ":: Enable the Nord console palette with:"
+  echo "   systemctl enable --now vtrgb-nord.service"
+}
+
+pre_remove() {
+  systemctl disable vtrgb-nord.service >/dev/null 2>&1 || true
+}

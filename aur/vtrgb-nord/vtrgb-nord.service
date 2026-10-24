@@ -1,0 +1,10 @@
+[Unit]
+Description=Nord palette for the Linux console
+After=systemd-vconsole-setup.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/setvtrgb /usr/share/vtrgb-nord/nord.vtrgb
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,25 @@
+# Maintainer: Jeremy Attali <contact@jtheoof.me>
+
+pkgname=vtrgb-nord
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Nord color palette for the Linux console (setvtrgb + systemd unit)"
+arch=('any')
+url="https://www.nordtheme.com/"
+license=('MIT')
+depends=(kbd systemd)
+install=vtrgb-nord.install
+source=(
+  'LICENSE'
+  'nord.vtrgb'
+  'vtrgb-nord.service'
+)
+sha256sums=('376f25097ddcaa268a51c4de12cc7c53ff8c11aeba9652e8d78b32bffc0b802f'
+            '1c6c32d6e1caaf1b2f6a44412f6236db1d3abdd818d31351bacb420d3e45594a'
+            '5f68ac14eb01504544cc2d34b909ac0e43f707d6a2ad630bafc3d1ba68f2c3bd')
+
+package() {
+  install -Dm644 nord.vtrgb "${pkgdir}/usr/share/${pkgname}/nord.vtrgb"
+  install -Dm644 "${pkgname}.service" "${pkgdir}/usr/lib/systemd/system/${pkgname}.service"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
