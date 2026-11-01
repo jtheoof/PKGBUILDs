@@ -3,3 +3,4 @@ pkg/
 
 *.tar.xz
 .idea/
+*.tar.zst
