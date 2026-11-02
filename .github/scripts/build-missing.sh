@@ -53,3 +53,13 @@ while read -r dir; do
     echo "==> $dir is already published, skipping"
   fi
 done < .github/repo-packages
+
+# Everything that was built must be in the plan. A mismatch (for example a debug
+# or split package nobody listed) would otherwise be silently dropped from the
+# repository; fail here and say which file.
+shopt -s nullglob
+for f in "$out"/built/*; do
+  name=${f##*/}
+  grep -qxF -- "$name" "$out/expected.txt" \
+    || { echo "built $name, which is not in the plan (expected.txt); check split packages and makepkg options" >&2; exit 1; }
+done
