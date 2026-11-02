@@ -1,7 +1,6 @@
 # Package directories published to https://pkg.jtheoof.me, one per line.
 # Anything not listed here is never built or published (putioarr and the
 # gnome-shell override are deliberately left out).
-jtheoof/system-backup
 jtheoof/vtrgb-nord
 aur/gandi-automatic-dns-systemd
 aur/lgtvremote-cli
