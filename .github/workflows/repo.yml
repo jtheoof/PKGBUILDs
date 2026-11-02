@@ -1,0 +1,101 @@
+name: pacman repository
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'custom/**'
+      - 'aur/**'
+      - '.github/repo-packages'
+      - '.github/scripts/**'
+      - '.github/site/**'
+      - '.github/workflows/repo.yml'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Rebuild and re-sign every package (first run, or after a key rotation)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: pacman-repo
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REPO_NAME: jtheoof
+  SITE_URL: https://pkg.jtheoof.me
+  PRIMARY_FPR: F44D05A50F6C9EB5C81BCF966A6B35DBE9442683
+  SIGNING_SUBKEY: D3467EB833782222B100C129CDB9D2788FEC3110
+
+jobs:
+  # Compiles upstream code, so it must never see the signing key.
+  build:
+    name: Build (no secrets)
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm --needed git
+      - uses: actions/checkout@v4
+      - name: Build packages that are not published yet
+        env:
+          FORCE: ${{ inputs.force && '1' || '0' }}
+        run: .github/scripts/build-missing.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: out/
+          if-no-files-found: error
+          retention-days: 1
+
+  # Holds the signing subkey. Runs no package code: it only signs and indexes.
+  publish:
+    name: Sign and assemble
+    needs: build
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    environment: release
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm --needed git
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+          path: in
+      - name: Sign, build the database, lay out the site
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          IN_DIR: in
+          SITE_DIR: site
+          TEMPLATE_DIR: .github/site
+        run: |
+          set -euo pipefail
+          export GNUPGHOME=$(mktemp -d)
+          printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --quiet --import
+          colons=$(gpg --batch --list-secret-keys --with-colons --with-subkey-fingerprints)
+          grep -q '^sec#' <<<"$colons" \
+            || { echo "the primary secret key is present in CI; refusing to sign" >&2; exit 1; }
+          grep -q "^fpr:::::::::${SIGNING_SUBKEY}:" <<<"$colons" \
+            || { echo "signing subkey ${SIGNING_SUBKEY} not found in the secret" >&2; exit 1; }
+          .github/scripts/assemble-site.sh
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to Pages
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

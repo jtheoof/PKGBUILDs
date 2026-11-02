@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jtheoof pacman repository</title>
+<style>
+  :root { --bg:#fff; --fg:#1d2229; --muted:#5b6573; --code:#eef1f5; --line:#d8dde4; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14181d; --fg:#e4e8ed; --muted:#98a2b0; --code:#1f252c; --line:#2e3640; }
+  }
+  body { background:var(--bg); color:var(--fg); font:16px/1.55 system-ui,sans-serif; margin:0; }
+  main { max-width:44rem; margin:0 auto; padding:2rem 16px 4rem; }
+  h1 { font-size:1.6rem; margin:0 0 .25rem; }
+  h2 { font-size:1.1rem; margin:2rem 0 .5rem; }
+  p, li { color:var(--fg); }
+  .muted { color:var(--muted); }
+  pre, code { background:var(--code); border-radius:6px; font:14px/1.5 ui-monospace,monospace; }
+  pre { padding:.8rem 1rem; overflow-x:auto; border:1px solid var(--line); }
+  code { padding:.1rem .35rem; }
+  pre code { padding:0; background:none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>jtheoof pacman repository</h1>
+  <p class="muted">Personal Arch Linux packages, built and signed by GitHub Actions from
+  <a href="https://github.com/jtheoof/PKGBUILDs">jtheoof/PKGBUILDs</a>. x86_64 only.</p>
+
+  <h2>1. Trust the signing key</h2>
+  <p>Check the fingerprint below against another source (the repository README) before trusting it.</p>
+  <pre><code>curl -fsSL https://pkg.jtheoof.me/jtheoof.gpg | sudo pacman-key --add -
+sudo pacman-key --lsign-key F44D05A50F6C9EB5C81BCF966A6B35DBE9442683</code></pre>
+  <p class="muted">Fingerprint: <code>F44D 05A5 0F6C 9EB5 C81B CF96 6A6B 35DB E944 2683</code></p>
+
+  <h2>2. Add the repository</h2>
+  <p>Append to <code>/etc/pacman.conf</code>:</p>
+  <pre><code>[jtheoof]
+SigLevel = Required DatabaseRequired
+Server = https://pkg.jtheoof.me/$arch</code></pre>
+  <p>Then <code>sudo pacman -Sy</code> and install what you want.</p>
+
+  <h2>Packages</h2>
+  <ul>
+<!--PACKAGES-->
+  </ul>
+</main>
+</body>
+</html>
