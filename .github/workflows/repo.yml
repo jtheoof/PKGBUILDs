@@ -4,7 +4,7 @@ on:
   push:
     branches: [master]
     paths:
-      - 'custom/**'
+      - 'jtheoof/**'
       - 'aur/**'
       - '.github/repo-packages'
       - '.github/scripts/**'

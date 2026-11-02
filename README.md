@@ -7,7 +7,7 @@ My own PKGBUILDs and patches for Arch Linux.
 |---|---|
 | `aur/` | AUR packages, or companions and overrides of third-party projects |
 | `extra/` | overrides of Arch `extra` packages |
-| `custom/` | my own packages with no upstream |
+| `jtheoof/` | my own packages with no upstream |
 
 Private, machine-specific packages live in a separate private repository.
 
