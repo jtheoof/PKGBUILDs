@@ -24,6 +24,10 @@ concurrency:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 env:
   REPO_NAME: jtheoof
   SITE_URL: https://pkg.jtheoof.me
@@ -76,11 +80,7 @@ jobs:
           set -euo pipefail
           export GNUPGHOME=$(mktemp -d)
           printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --quiet --import
-          colons=$(gpg --batch --list-secret-keys --with-colons --with-subkey-fingerprints)
-          grep -q '^sec#' <<<"$colons" \
-            || { echo "the primary secret key is present in CI; refusing to sign" >&2; exit 1; }
-          grep -q "^fpr:::::::::${SIGNING_SUBKEY}:" <<<"$colons" \
-            || { echo "signing subkey ${SIGNING_SUBKEY} not found in the secret" >&2; exit 1; }
+          .github/scripts/check-signing-key.sh
           .github/scripts/assemble-site.sh
       - uses: actions/upload-pages-artifact@v3
         with:
