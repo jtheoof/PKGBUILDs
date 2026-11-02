@@ -19,10 +19,20 @@ id builder &>/dev/null || useradd -m builder
 echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
 chown -R builder:builder "$root"
 
+# The container's makepkg.conf enables "debug". With that option on, --packagelist
+# always names a <pkgbase>-debug-* package, but makepkg only builds one when
+# stripping produced detached debug symbols (compiled binaries). None of our
+# packages ship any, so the plan would name files that are never built. We do not
+# publish debug packages anyway: force the option off for both plan and build.
+cfg=/tmp/makepkg.conf
+cp /etc/makepkg.conf "$cfg"
+echo 'OPTIONS+=(!debug)' >> "$cfg"
+chmod 644 "$cfg"
+
 while read -r dir; do
   [[ -z $dir || $dir == \#* ]] && continue
 
-  mapfile -t files < <(runuser -u builder -- bash -c 'cd "$1" && makepkg --packagelist' _ "$root/$dir" | xargs -n1 basename)
+  mapfile -t files < <(runuser -u builder -- bash -c 'cd "$1" && makepkg --config "$2" --packagelist' _ "$root/$dir" "$cfg" | xargs -n1 basename)
   need=${FORCE:-0}
 
   for f in "${files[@]}"; do
@@ -38,7 +48,7 @@ while read -r dir; do
 
   if ((need)); then
     echo "==> building $dir"
-    runuser -u builder -- env PKGDEST="$out/built" bash -c 'cd "$1" && makepkg -sf --noconfirm --nosign' _ "$root/$dir"
+    runuser -u builder -- env PKGDEST="$out/built" bash -c 'cd "$1" && makepkg --config "$2" -sf --noconfirm --nosign' _ "$root/$dir" "$cfg"
   else
     echo "==> $dir is already published, skipping"
   fi

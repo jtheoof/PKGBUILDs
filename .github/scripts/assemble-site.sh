@@ -28,8 +28,8 @@ while read -r f; do
     cp "$IN_DIR/built/$f" .
     sign "$f"
   else
-    curl -fsSLO --retry 3 "$SITE_URL/x86_64/$f"
-    curl -fsSLO --retry 3 "$SITE_URL/x86_64/$f.sig"
+    curl -fsSLO --retry 3 "$SITE_URL/x86_64/$f" && curl -fsSLO --retry 3 "$SITE_URL/x86_64/$f.sig" \
+      || { echo "$f is neither in the build artifact nor on $SITE_URL (rerun with force to rebuild everything)" >&2; exit 1; }
   fi
 done < "$IN_DIR/expected.txt"
 
