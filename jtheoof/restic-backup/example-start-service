@@ -1,0 +1,9 @@
+#!/bin/sh
+# Example post-backup hook: start the service again.
+#
+# Install as /etc/restic/hooks/post-backup.d/90-start-myapp (mode 755, owned by root).
+# Post hooks run even when the backup failed, and see RESTIC_JOB_STATUS and
+# RESTIC_JOB_EXIT.
+set -eu
+
+systemctl start myapp.service

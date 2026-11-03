@@ -1,0 +1,94 @@
+# Maintainer: Jeremy Attali <contact@jtheoof.me>
+
+pkgname=restic-backup
+pkgver=1.0.0
+pkgrel=1
+pkgdesc='Scheduled restic backups with hooks, a mount guard, status files and systemd timers'
+arch=(any)
+url='https://github.com/jtheoof/PKGBUILDs'
+license=('MIT')
+depends=(bash coreutils openssl restic sed util-linux)
+makedepends=(scdoc)
+optdepends=('sqlite: SQLite example hook'
+            'postgresql: PostgreSQL example hook')
+backup=(etc/restic/env
+        etc/restic/excludes)
+install=$pkgname.install
+source=(LICENSE
+        README.md
+        restic-backup
+        restic-backup.8.scd
+        restic-backup.conf.5.scd
+        restic-backup-hooks.7.scd
+        env
+        excludes
+        restic-backup.tmpfiles
+        restic-backup.service
+        restic-backup.timer
+        restic-backup-prune.service
+        restic-backup-prune.timer
+        restic-backup-check.service
+        restic-backup-check.timer
+        example-sqlite
+        example-postgresql
+        example-stop-service
+        example-start-service)
+sha256sums=('376f25097ddcaa268a51c4de12cc7c53ff8c11aeba9652e8d78b32bffc0b802f'
+            'fd8edf288041b221d7a0c6661aeef98e68b1defe6d5c166ad76ba5dd86b1044e'
+            '072138769dbb2e0a473b3ef8d9d4cf04072d2e957a9e510350c6780a01a6fa4a'
+            '7d822608f25fb4a9434a7af9755cc18a74481b8921df00f7f769e144d6c8d108'
+            '7bd72169f35cfdbe26f16d5414bfa8a22aca159cbca91f2b605f51232f3ea89b'
+            'd036b9a9c9be4d2b50507addc329f69994b1ef717209a9d00b79052b1a39849a'
+            'd6d08768623fcd68d1d263734a0022aa4f3b1d7e44a974025b0227331cc0f996'
+            '64710b3247f05c013291abdb98673623c4a12c7ab04092717d4ff0b10c08dd96'
+            '58e4664af8ba274b1b01c8e0dc2044f1921e6bc7bfe32a7eecb71c3d60733348'
+            'a522767377bc356d03f8da7a18a87acb4213f978497530119def803e2b602538'
+            '505d369f3e3c18cba5ed788de57ff3ac3c11fb4ba6180d48a0971337f730d255'
+            'c0a572020d6adc4a5ab0fb5db9635ba5805074651dae2a893d3242945d936ba4'
+            'fdb84309a7c2f37bc113c69f792852ea1d9b21f7d338480fb7d95cbc794fb97e'
+            'd9c1029fa94e7983f6a080ebfd422f83f673c82cf8c3cf05935c53eb90dddb66'
+            '81b4723d5516c8622075ad7c24bcd8b32375553bc7ce5f65449720571d542486'
+            'cb9b43fc64d0d777598a81f472b60e86b6d7b2e0b4d6a90e1d273e540c2131f5'
+            'c14c213605965d99fdbe494900f83ef563c028faae0201cc459057c7abaea7d0'
+            '5001d04ac1e5125b3bd462e92855305b6134d8e87f597853cba5de408f9031dd'
+            'd31098733a176e40dc6dda9a1808bc2eafefd6b13e1860506530375c104858e3')
+
+build() {
+  scdoc < restic-backup.8.scd > restic-backup.8
+  scdoc < restic-backup.conf.5.scd > restic-backup.conf.5
+  scdoc < restic-backup-hooks.7.scd > restic-backup-hooks.7
+}
+
+package() {
+  install -Dm755 restic-backup "$pkgdir/usr/bin/restic-backup"
+  sed -i "s/@VERSION@/$pkgver/" "$pkgdir/usr/bin/restic-backup"
+
+  install -Dm644 restic-backup{,-prune,-check}.{service,timer} \
+    -t "$pkgdir/usr/lib/systemd/system/"
+  install -Dm644 restic-backup.tmpfiles "$pkgdir/usr/lib/tmpfiles.d/restic-backup.conf"
+
+  # root only. The repository password (/etc/restic/password) is deliberately NOT
+  # packaged: the install script creates it only if it is missing.
+  install -dm700 "$pkgdir/etc/restic"
+  install -m600 env excludes "$pkgdir/etc/restic/"
+  local event job
+  for event in pre post; do
+    for job in backup prune check; do
+      install -dm755 "$pkgdir/etc/restic/hooks/$event-$job.d"
+    done
+  done
+
+  install -Dm644 restic-backup.8 -t "$pkgdir/usr/share/man/man8/"
+  install -Dm644 restic-backup.conf.5 -t "$pkgdir/usr/share/man/man5/"
+  install -Dm644 restic-backup-hooks.7 -t "$pkgdir/usr/share/man/man7/"
+
+  local doc="$pkgdir/usr/share/doc/$pkgname"
+  install -Dm644 README.md -t "$doc/"
+  # not executable on purpose: they do nothing until copied into a hook directory
+  install -Dm644 example-sqlite "$doc/examples/hooks/pre-backup.d/10-sqlite"
+  install -Dm644 example-postgresql "$doc/examples/hooks/pre-backup.d/10-postgresql"
+  install -Dm644 example-stop-service "$doc/examples/hooks/pre-backup.d/10-stop-myapp"
+  install -Dm644 example-start-service "$doc/examples/hooks/post-backup.d/90-start-myapp"
+
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

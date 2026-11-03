@@ -1,0 +1,37 @@
+# restic-backup settings, sourced as shell by restic-backup.
+# See restic-backup.conf(5). Variables named RESTIC_* that restic itself reads
+# (RESTIC_REPOSITORY, RESTIC_PASSWORD_FILE, RESTIC_COMPRESSION, ...) are passed on.
+
+# --- Repository (required) ----------------------------------------------------
+# Anything restic accepts: a path, sftp:user@host:/path, s3:..., rest:https://...
+#RESTIC_REPOSITORY=/mnt/backup/restic
+RESTIC_PASSWORD_FILE=/etc/restic/password
+RESTIC_CACHE_DIR=/var/cache/restic
+
+# Refuse to run unless this path is a mounted mount point (empty: no check).
+#RESTIC_REQUIRE_MOUNT=/mnt/backup
+
+# --- Host name stored in snapshots, and used to select them when pruning ------
+# Default: the output of `uname -n`.
+#RESTIC_HOST=
+
+# --- What the backup job saves ------------------------------------------------
+# Whitespace separated, no quoting.
+#RESTIC_BACKUP_PATHS="/"
+#RESTIC_BACKUP_ARGS="--one-file-system --exclude-caches"
+#RESTIC_BACKUP_TAGS="scheduled"
+#RESTIC_EXCLUDE_FILE=/etc/restic/excludes
+
+# --- Retention applied by the prune job ---------------------------------------
+#RESTIC_KEEP_DAILY=7
+#RESTIC_KEEP_WEEKLY=4
+#RESTIC_KEEP_MONTHLY=6
+
+# --- Share of the repository data re-read by the check job --------------------
+#RESTIC_CHECK_SUBSET=10%
+
+# --- Hooks (restic-backup-hooks(7)) and state ---------------------------------
+#RESTIC_HOOKS_DIR=/etc/restic/hooks
+#RESTIC_HOOKS_STRICT=0
+#RESTIC_STAGING_DIR=/var/lib/restic-backup/staging
+#RESTIC_STATE_DIR=/var/lib/restic-backup

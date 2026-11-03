@@ -1,0 +1,13 @@
+[Unit]
+Description=restic backup
+Documentation=man:restic-backup(8)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/restic-backup run backup
+StateDirectory=restic-backup
+TimeoutStartSec=4h
+Nice=10
+IOSchedulingClass=idle

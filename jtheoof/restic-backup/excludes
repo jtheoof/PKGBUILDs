@@ -1,0 +1,14 @@
+# restic --exclude-file patterns (see `restic help backup`).
+#
+# A restore should be a drop-in copy of the machine. Only exclude what regenerates
+# by itself, and for system directories exclude the CONTENTS ("dir/*"), not the
+# directory: the directory, its owner and its mode stay in the snapshot, so a
+# service that needs it starts without fixing.
+# Other filesystems are skipped by --one-file-system, not by this file.
+
+/var/cache/pacman/pkg/*
+/var/log/journal/*
+/var/tmp/*
+/root/.cache
+/home/*/.cache
+/home/*/.local/share/Trash

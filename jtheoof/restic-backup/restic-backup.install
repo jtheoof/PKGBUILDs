@@ -1,0 +1,27 @@
+post_install() {
+  if [[ ! -e /etc/restic/password ]]; then
+    (umask 077; openssl rand -base64 36 | tr -d '\n' > /etc/restic/password)
+    cat <<'MSG'
+==> restic-backup: a NEW repository password was generated (not shown here).
+    Save it in your password manager NOW; it is the only key to the backups:
+         sudo cat /etc/restic/password
+    It cannot be recovered from the repository it protects.
+MSG
+  fi
+  cat <<'MSG'
+==> restic-backup: one-time setup
+    1. Set RESTIC_REPOSITORY (and review the other settings) in /etc/restic/env.
+    2. New repository only:  sudo restic-backup exec restic init
+    3. Check access:         sudo restic-backup exec restic snapshots
+    4. First backup by hand: sudo restic-backup run backup
+    5. Enable the schedule:
+         sudo systemctl enable --now restic-backup.timer \
+           restic-backup-prune.timer restic-backup-check.timer
+    The timers are NOT enabled by this package. Documentation:
+    man 8 restic-backup, man 5 restic-backup.conf, man 7 restic-backup-hooks.
+MSG
+}
+
+post_remove() {
+  echo "==> restic-backup: /etc/restic and /var/lib/restic-backup were kept; remove by hand if unwanted."
+}

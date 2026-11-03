@@ -1,0 +1,13 @@
+[Unit]
+Description=restic repository check
+Documentation=man:restic-backup(8)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/restic-backup run check
+StateDirectory=restic-backup
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=idle

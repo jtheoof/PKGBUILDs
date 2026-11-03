@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekly restic forget and prune
+Documentation=man:restic-backup(8)
+
+[Timer]
+OnCalendar=Sat *-*-* 04:00:00
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,334 @@
+#!/bin/bash
+# restic-backup: scheduled restic jobs with hooks, a mount guard and status files.
+# Documentation: restic-backup(8), restic-backup.conf(5), restic-backup-hooks(7).
+set -uo pipefail
+
+PROG=restic-backup
+VERSION=@VERSION@
+ENV_FILE=${RESTIC_ENV_FILE:-/etc/restic/env}
+JOBS="backup prune check"
+
+log() { printf '%s: %s\n' "$PROG" "$*" >&2; }
+die() { log "$*"; exit 1; }
+
+usage() {
+  cat <<EOT
+Usage: $PROG <command> [arguments]
+
+Scheduled restic backups with hooks, a mount guard and status files.
+
+Commands:
+  run <job>              run a job: backup, prune or check
+  status                 show the last result of each job
+  exec COMMAND [ARG...]  run COMMAND with the restic environment loaded
+                         (example: $PROG exec restic snapshots)
+  shell                  start a shell with the restic environment loaded
+  help                   show this help
+
+Options:
+  -h, --help             show this help
+  -V, --version          show the version
+
+Settings: $ENV_FILE (restic-backup.conf(5)).
+Hooks: restic-backup-hooks(7). Manual: restic-backup(8).
+EOT
+}
+
+usage_run() {
+  cat <<EOT
+Usage: $PROG run <job>
+
+Run one job under a lock, with its hooks, and record the result.
+
+Jobs:
+  backup   back up RESTIC_BACKUP_PATHS (pre-backup and post-backup hooks)
+  prune    forget old snapshots and prune (RESTIC_KEEP_DAILY/WEEKLY/MONTHLY)
+  check    verify the repository, reading RESTIC_CHECK_SUBSET of the data
+
+Exit status: 0 ok or warning, 1 failed, 2 usage error.
+The result is stored in the state directory, see: $PROG status
+EOT
+}
+
+usage_status() {
+  cat <<EOT
+Usage: $PROG status
+
+Show the last result of each job (backup, prune, check).
+Exit status: 1 if any job last failed, otherwise 0.
+EOT
+}
+
+usage_exec() {
+  cat <<EOT
+Usage: $PROG exec COMMAND [ARG...]
+
+Load the settings, check the mount guard and run COMMAND with the restic
+environment (RESTIC_REPOSITORY, RESTIC_PASSWORD_FILE, ...). Must run as root.
+
+Example: $PROG exec restic snapshots
+EOT
+}
+
+usage_shell() {
+  cat <<EOT
+Usage: $PROG shell
+
+Check the mount guard and start a shell with the restic environment loaded, so
+that plain restic commands work. Must run as root.
+EOT
+}
+
+need_root() { [[ $EUID -eq 0 ]] || die "must run as root (try: sudo $PROG $ORIG_ARGS)"; }
+
+# Defaults for settings the user did not set, exported for restic and for hooks.
+set_default() { # NAME VALUE
+  if [[ -z ${!1+x} ]]; then printf -v "$1" '%s' "$2"; fi
+  export "${1?}"
+}
+
+load_env() {
+  [[ -r $ENV_FILE ]] || die "cannot read $ENV_FILE"
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE" || die "error while reading $ENV_FILE"
+  set +a
+
+  local old
+  for old in KEEP_DAILY KEEP_WEEKLY KEEP_MONTHLY CHECK_SUBSET; do
+    [[ -n ${!old:-} ]] && log "warning: $old in $ENV_FILE is ignored, the setting is now RESTIC_$old"
+  done
+
+  RESTIC_HOST=${RESTIC_HOST:-$(uname -n)}; export RESTIC_HOST
+  set_default RESTIC_STATE_DIR "${STATE_DIRECTORY:-/var/lib/restic-backup}"
+  set_default RESTIC_STAGING_DIR "$RESTIC_STATE_DIR/staging"
+  set_default RESTIC_HOOKS_DIR /etc/restic/hooks
+  set_default RESTIC_HOOKS_STRICT 0
+  set_default RESTIC_BACKUP_PATHS /
+  set_default RESTIC_BACKUP_ARGS "--one-file-system --exclude-caches"
+  set_default RESTIC_BACKUP_TAGS scheduled
+  set_default RESTIC_EXCLUDE_FILE /etc/restic/excludes
+  set_default RESTIC_KEEP_DAILY 7
+  set_default RESTIC_KEEP_WEEKLY 4
+  set_default RESTIC_KEEP_MONTHLY 6
+  set_default RESTIC_CHECK_SUBSET 10%
+}
+
+require_restic() { command -v restic >/dev/null 2>&1 || die "restic is not installed"; }
+
+require_repo() {
+  [[ -n ${RESTIC_REPOSITORY:-}${RESTIC_REPOSITORY_FILE:-} ]] \
+    || die "RESTIC_REPOSITORY is not set (edit $ENV_FILE)"
+}
+
+# The repository disk may be absent (not in fstab, or unplugged): refuse instead of
+# letting restic write a repository into the empty mount point on the root filesystem.
+require_mount() {
+  if [[ -n ${RESTIC_REQUIRE_MOUNT:-} ]] && ! mountpoint -q "$RESTIC_REQUIRE_MOUNT"; then
+    die "$RESTIC_REQUIRE_MOUNT is not mounted"
+  fi
+}
+
+# Owned by root and not writable by group or others (hooks run as root).
+is_secure() {
+  local owner mode
+  read -r owner mode < <(stat -c '%u %a' -- "$1") || return 1
+  [[ $owner -eq 0 ]] && (( (8#$mode & 8#022) == 0 ))
+}
+
+HOOK_FAILURES=()
+
+# Run the executable files of $RESTIC_HOOKS_DIR/<event>.d in sorted order.
+run_hooks() { # event, for example pre-backup
+  local event=$1 dir f name rc=0 hrc
+  dir=$RESTIC_HOOKS_DIR/$event.d
+  [[ -d $dir ]] || return 0
+  if ! is_secure "$dir"; then
+    HOOK_FAILURES+=("$event.d: not owned by root or writable by others")
+    return 1
+  fi
+  for f in "$dir"/*; do
+    [[ -f $f && -x $f ]] || continue
+    name=${f##*/}
+    if [[ ! $name =~ ^[A-Za-z0-9_-]+$ ]]; then
+      log "skipping $event hook with an unsupported name: $name"
+      continue
+    fi
+    if ! is_secure "$f"; then
+      HOOK_FAILURES+=("$event/$name: not owned by root or writable by others")
+      rc=1; continue
+    fi
+    log "running $event hook: $name"
+    (cd / && "$f" </dev/null)
+    hrc=$?
+    if [[ $hrc -ne 0 ]]; then
+      HOOK_FAILURES+=("$event/$name failed (exit $hrc)")
+      rc=1
+    fi
+  done
+  return $rc
+}
+
+run_restic() { # job
+  local -a args=() paths=() tags=()
+  case $1 in
+    backup)
+      read -ra args <<<"$RESTIC_BACKUP_ARGS"
+      read -ra paths <<<"$RESTIC_BACKUP_PATHS"
+      [[ ${#paths[@]} -gt 0 ]] || { log "RESTIC_BACKUP_PATHS is empty"; return 1; }
+      [[ -n $RESTIC_BACKUP_TAGS ]] && tags=(--tag "${RESTIC_BACKUP_TAGS// /,}")
+      if [[ -n $RESTIC_EXCLUDE_FILE ]]; then
+        [[ -r $RESTIC_EXCLUDE_FILE ]] || { log "cannot read RESTIC_EXCLUDE_FILE=$RESTIC_EXCLUDE_FILE"; return 1; }
+        args+=(--exclude-file="$RESTIC_EXCLUDE_FILE")
+      fi
+      restic backup ${args[@]+"${args[@]}"} ${tags[@]+"${tags[@]}"} --host "$RESTIC_HOST" "${paths[@]}"
+      ;;
+    prune)
+      restic forget --prune --host "$RESTIC_HOST" \
+        --keep-daily "$RESTIC_KEEP_DAILY" --keep-weekly "$RESTIC_KEEP_WEEKLY" --keep-monthly "$RESTIC_KEEP_MONTHLY"
+      ;;
+    check)
+      restic check --read-data-subset="$RESTIC_CHECK_SUBSET"
+      ;;
+  esac
+}
+
+write_status() { # result restic_exit message started
+  local dir=$RESTIC_STATE_DIR/status tmp
+  mkdir -p "$dir"
+  tmp=$(mktemp "$dir/.$JOB.XXXXXX")
+  {
+    echo "job=$JOB"
+    echo "result=$1"
+    echo "exit=$2"
+    [[ -n $3 ]] && echo "message=$3"
+    echo "started=$4"
+    echo "finished=$(date --iso-8601=seconds)"
+  } > "$tmp"
+  chmod 644 "$tmp"
+  mv -f "$tmp" "$dir/$JOB"
+}
+
+cmd_run() {
+  JOB=${1:-}
+  case $JOB in
+    backup|prune|check) ;;
+    -h|--help) usage_run; return 0 ;;
+    *) usage_run >&2; return 2 ;;
+  esac
+  need_root
+  load_env
+  require_restic; require_repo; require_mount
+
+  install -d -m 755 "$RESTIC_STATE_DIR"
+  install -d -m 700 "$RESTIC_STAGING_DIR"
+  exec 9>"$RESTIC_STATE_DIR/lock"
+  flock 9 || die "cannot take the lock"
+
+  export RESTIC_JOB=$JOB
+  local started status rc=0 message
+  started=$(date --iso-8601=seconds)
+
+  run_hooks "pre-$JOB"
+  if [[ $RESTIC_HOOKS_STRICT = 1 && ${#HOOK_FAILURES[@]} -gt 0 ]]; then
+    log "a pre-hook failed and RESTIC_HOOKS_STRICT=1: restic is not run"
+    rc=1
+  else
+    run_restic "$JOB"; rc=$?
+  fi
+
+  case $rc in
+    0) status=ok ;;
+    3) if [[ $JOB = backup ]]; then status=warning; else status=failed; fi ;;
+    *) status=failed ;;
+  esac
+  export RESTIC_JOB_STATUS=$status RESTIC_JOB_EXIT=$rc
+
+  run_hooks "post-$JOB"
+
+  message=""
+  if [[ ${#HOOK_FAILURES[@]} -gt 0 ]]; then
+    message=$(printf '%s; ' "${HOOK_FAILURES[@]}"); message=${message%; }
+    status=failed
+  fi
+  [[ $status = warning ]] && message="some source data could not be read (restic exit 3)${message:+; $message}"
+
+  write_status "$status" "$rc" "$message" "$started"
+  log "$JOB: $status${message:+ ($message)}"
+  [[ $status = failed ]] && return 1
+  return 0
+}
+
+kv() { sed -n "s/^$2=//p" "$1" | head -n 1; }
+
+human_age() { # seconds
+  local s=$1
+  if (( s < 3600 )); then echo "$((s / 60))m ago"
+  elif (( s < 86400 )); then echo "$((s / 3600))h ago"
+  else echo "$((s / 86400)) days ago"; fi
+}
+
+cmd_status() {
+  case ${1:-} in
+    -h|--help) usage_status; return 0 ;;
+    "") ;;
+    *) usage_status >&2; return 2 ;;
+  esac
+  if [[ -r $ENV_FILE ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$ENV_FILE" 2>/dev/null
+    set +a
+  fi
+  local state=${RESTIC_STATE_DIR:-${STATE_DIRECTORY:-/var/lib/restic-backup}}
+  local job f res fin msg when ts rc=0 now
+  now=$(date +%s)
+  printf '%-8s %-8s %s\n' JOB RESULT WHEN
+  for job in $JOBS; do
+    f=$state/status/$job
+    if [[ ! -r $f ]]; then printf '%-8s %-8s %s\n' "$job" "-" "never run"; continue; fi
+    res=$(kv "$f" result); fin=$(kv "$f" finished); msg=$(kv "$f" message)
+    when=$fin
+    if ts=$(date -d "$fin" +%s 2>/dev/null); then when="$fin ($(human_age $((now - ts))))"; fi
+    printf '%-8s %-8s %s\n' "$job" "${res:-?}" "$when"
+    [[ -n $msg ]] && printf '         %s\n' "$msg"
+    [[ $res = failed ]] && rc=1
+  done
+  return $rc
+}
+
+cmd_exec() {
+  case ${1:-} in
+    -h|--help) usage_exec; return 0 ;;
+    "") usage_exec >&2; return 2 ;;
+  esac
+  need_root
+  load_env
+  require_mount
+  exec "$@"
+}
+
+cmd_shell() {
+  case ${1:-} in
+    -h|--help) usage_shell; return 0 ;;
+    "") ;;
+    *) usage_shell >&2; return 2 ;;
+  esac
+  need_root
+  load_env
+  require_mount
+  log "restic environment loaded; type 'exit' to leave"
+  exec "${SHELL:-/bin/bash}"
+}
+
+ORIG_ARGS=$*
+case ${1:-} in
+  run)             shift; cmd_run "$@" ;;
+  status)          shift; cmd_status "$@" ;;
+  exec)            shift; cmd_exec "$@" ;;
+  shell)           shift; cmd_shell "$@" ;;
+  help|-h|--help)  usage ;;
+  -V|--version)    echo "$PROG $VERSION" ;;
+  "")              usage >&2; exit 2 ;;
+  *)               log "unknown command: $1"; usage >&2; exit 2 ;;
+esac

@@ -1,0 +1,3 @@
+d /var/cache/restic 0700 root root -
+d /var/lib/restic-backup 0755 root root -
+d /var/lib/restic-backup/staging 0700 root root -

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Example pre-backup hook: dump all PostgreSQL databases. UNTESTED, adapt first.
+#
+# Install as /etc/restic/hooks/pre-backup.d/10-postgresql (mode 755, owned by root).
+set -eu
+
+dest=$RESTIC_STAGING_DIR/postgresql
+mkdir -p "$dest"
+runuser -u postgres -- pg_dumpall --clean > "$dest/all.sql.tmp"
+mv "$dest/all.sql.tmp" "$dest/all.sql"

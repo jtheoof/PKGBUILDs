@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly restic backup
+Documentation=man:restic-backup(8)
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

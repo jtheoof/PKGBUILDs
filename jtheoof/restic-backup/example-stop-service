@@ -1,0 +1,8 @@
+#!/bin/sh
+# Example pre-backup hook: stop a service so its files are consistent.
+#
+# Install as /etc/restic/hooks/pre-backup.d/10-stop-myapp (mode 755, owned by root),
+# together with example-start-service as post-backup.d/90-start-myapp.
+set -eu
+
+systemctl stop myapp.service

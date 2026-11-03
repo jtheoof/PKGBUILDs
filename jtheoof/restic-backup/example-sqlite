@@ -1,0 +1,16 @@
+#!/bin/sh
+# Example pre-backup hook: consistent copies of SQLite databases.
+#
+# Install as /etc/restic/hooks/pre-backup.d/10-sqlite (mode 755, owned by root).
+# Edit the list of databases below. Copies go to $RESTIC_STAGING_DIR/<original path>,
+# which is part of the backup when RESTIC_BACKUP_PATHS includes / (the default).
+#
+# -readonly: never let root create -wal/-shm files that would lock out the service user.
+set -eu
+
+for db in /var/lib/myapp/*.db; do
+  [ -f "$db" ] || continue
+  dest=$RESTIC_STAGING_DIR$db
+  mkdir -p "$(dirname "$dest")"
+  sqlite3 -readonly "$db" ".backup '$dest'"
+done
