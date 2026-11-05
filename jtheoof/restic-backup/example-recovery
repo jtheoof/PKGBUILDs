@@ -1,0 +1,99 @@
+#!/bin/bash
+# Restore from a restic-backup repository on a machine that has nothing else:
+# an Arch live USB, a replacement disk, a friend's laptop.
+#
+# Keep this file on an ENCRYPTED recovery stick next to the two secrets it needs:
+#   recovery-key       an SSH private key that may use the repository account
+#   restic-password    the repository password (a copy of /etc/restic/password)
+#
+# Edit the settings below once, or override them from the environment.
+# Nothing here touches the disks except `restore`, which writes below TARGET.
+set -euo pipefail
+
+SFTP_HOST=${SFTP_HOST:-backup.example.org}
+SFTP_USER=${SFTP_USER:-restic}
+REPO_PATH=${REPO_PATH:-/srv/restic/myhost}
+# Expected host key fingerprint (ssh-keygen -lf output, SHA256:...). Empty: ask.
+HOST_FINGERPRINT=${HOST_FINGERPRINT:-}
+
+HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+KEY=${KEY:-$HERE/recovery-key}
+PASSWORD_FILE=${PASSWORD_FILE:-$HERE/restic-password}
+TARGET=${TARGET:-/mnt}
+
+log() { printf 'recovery: %s\n' "$*" >&2; }
+die() { log "$*"; exit 1; }
+
+usage() {
+  cat <<EOT
+Usage: ${0##*/} <command> [arguments]
+
+Commands:
+  snapshots [ARG...]         list snapshots
+  restore [SNAPSHOT] [ARG...]
+                             restore SNAPSHOT (default: latest) into \$TARGET
+                             (default $TARGET, which must be a mount point;
+                             set FORCE=1 to skip that check)
+  restic ARG...              run any restic command on the repository
+
+Settings (environment): SFTP_HOST SFTP_USER REPO_PATH HOST_FINGERPRINT
+                        KEY PASSWORD_FILE TARGET FORCE
+EOT
+}
+
+# Work files live in a private directory that disappears on exit. ssh insists on
+# strict key permissions, which a USB stick formatted with vfat cannot provide.
+WORK=$(mktemp -d)
+trap 'rm -rf "$WORK"' EXIT
+
+prepare() {
+  command -v restic >/dev/null || die "restic is not installed (pacman -Sy restic)"
+  command -v ssh >/dev/null || die "ssh is not installed (pacman -S openssh)"
+  [[ -r $KEY ]] || die "cannot read the key: $KEY"
+  [[ -r $PASSWORD_FILE ]] || die "cannot read the password file: $PASSWORD_FILE"
+  install -m 600 "$KEY" "$WORK/key"
+
+  # restic runs ssh without a terminal, so trust the host key here, once.
+  ssh-keyscan -t ed25519 "$SFTP_HOST" > "$WORK/known_hosts" 2>/dev/null
+  [[ -s $WORK/known_hosts ]] || die "cannot reach $SFTP_HOST (network? name?)"
+  local seen
+  seen=$(ssh-keygen -lf "$WORK/known_hosts" | awk '{print $2}')
+  if [[ -n $HOST_FINGERPRINT ]]; then
+    [[ $seen = "$HOST_FINGERPRINT" ]] || die "host key mismatch: got $seen, expected $HOST_FINGERPRINT"
+  else
+    log "host key of $SFTP_HOST: $seen"
+    read -r -p "recovery: does it match your notes? [y/N] " answer
+    [[ $answer = [yY]* ]] || die "host key not accepted"
+  fi
+
+  SSH_COMMAND="ssh -i $WORK/key -o IdentitiesOnly=yes -o BatchMode=yes"
+  SSH_COMMAND+=" -o UserKnownHostsFile=$WORK/known_hosts -o StrictHostKeyChecking=yes"
+  SSH_COMMAND+=" $SFTP_USER@$SFTP_HOST -s sftp"
+  export RESTIC_CACHE_DIR=$WORK/cache
+}
+
+run_restic() {
+  restic -r "sftp:$SFTP_USER@$SFTP_HOST:$REPO_PATH" \
+    -o "sftp.command=$SSH_COMMAND" \
+    --password-file "$PASSWORD_FILE" "$@"
+}
+
+case ${1:-} in
+  snapshots)
+    shift; prepare; run_restic snapshots "$@" ;;
+  restore)
+    shift
+    snapshot=latest
+    if [[ $# -gt 0 && $1 != -* ]]; then snapshot=$1; shift; fi
+    if [[ ${FORCE:-0} != 1 ]] && ! mountpoint -q "$TARGET"; then
+      die "$TARGET is not a mount point (mount the new root there, or set FORCE=1)"
+    fi
+    prepare
+    run_restic restore "$snapshot" --target "$TARGET" --verify "$@" ;;
+  restic)
+    shift; prepare; run_restic "$@" ;;
+  ""|help|-h|--help)
+    usage ;;
+  *)
+    usage >&2; exit 2 ;;
+esac

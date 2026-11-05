@@ -38,6 +38,9 @@ cannot be opened.
 - `man restic-backup.conf`: every setting in `/etc/restic/env`
 - `man restic-backup-hooks`: the hook interface
 - `/usr/share/doc/restic-backup/examples/hooks/`: example hooks
+- `/usr/share/doc/restic-backup/examples/recovery/restore.sh`: restore script for a
+  machine that has nothing else (live USB); keep it on an encrypted recovery stick
+  with the repository password and an SSH key
 
 ## Tests
 

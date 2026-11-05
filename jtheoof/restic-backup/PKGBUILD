@@ -32,9 +32,10 @@ source=(LICENSE
         example-sqlite
         example-postgresql
         example-stop-service
-        example-start-service)
+        example-start-service
+        example-recovery)
 sha256sums=('376f25097ddcaa268a51c4de12cc7c53ff8c11aeba9652e8d78b32bffc0b802f'
-            'fd8edf288041b221d7a0c6661aeef98e68b1defe6d5c166ad76ba5dd86b1044e'
+            '90fa096273f18d542c7858f208bf47ccaf3fd3f874332054838bc3d3296c8474'
             '072138769dbb2e0a473b3ef8d9d4cf04072d2e957a9e510350c6780a01a6fa4a'
             '7d822608f25fb4a9434a7af9755cc18a74481b8921df00f7f769e144d6c8d108'
             '7bd72169f35cfdbe26f16d5414bfa8a22aca159cbca91f2b605f51232f3ea89b'
@@ -51,7 +52,8 @@ sha256sums=('376f25097ddcaa268a51c4de12cc7c53ff8c11aeba9652e8d78b32bffc0b802f'
             'cb9b43fc64d0d777598a81f472b60e86b6d7b2e0b4d6a90e1d273e540c2131f5'
             'c14c213605965d99fdbe494900f83ef563c028faae0201cc459057c7abaea7d0'
             '5001d04ac1e5125b3bd462e92855305b6134d8e87f597853cba5de408f9031dd'
-            'd31098733a176e40dc6dda9a1808bc2eafefd6b13e1860506530375c104858e3')
+            'd31098733a176e40dc6dda9a1808bc2eafefd6b13e1860506530375c104858e3'
+            'b39635a691d1a88237c9cd44d6c995d1f7ab5e47089a4ef4004983906c3b990b')
 
 build() {
   scdoc < restic-backup.8.scd > restic-backup.8
@@ -89,6 +91,7 @@ package() {
   install -Dm644 example-postgresql "$doc/examples/hooks/pre-backup.d/10-postgresql"
   install -Dm644 example-stop-service "$doc/examples/hooks/pre-backup.d/10-stop-myapp"
   install -Dm644 example-start-service "$doc/examples/hooks/post-backup.d/90-start-myapp"
+  install -Dm755 example-recovery "$doc/examples/recovery/restore.sh"
 
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
