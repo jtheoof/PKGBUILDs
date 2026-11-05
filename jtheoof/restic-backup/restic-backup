@@ -21,9 +21,13 @@ Commands:
   run <job>              run a job: backup, prune or check
   status                 show the last result of each job
   exec COMMAND [ARG...]  run COMMAND with the restic environment loaded
-                         (example: $PROG exec restic snapshots)
+                         (example: $PROG exec sh -c 'echo "\$RESTIC_REPOSITORY"')
   shell                  start a shell with the restic environment loaded
   help                   show this help
+  <restic command>       anything else is passed to restic, as root, with the
+                         environment loaded (example: $PROG snapshots)
+                         backup, prune, check and forget are not passed on, see
+                         the jobs above
 
 Options:
   -h, --help             show this help
@@ -66,7 +70,9 @@ Usage: $PROG exec COMMAND [ARG...]
 Load the settings, check the mount guard and run COMMAND with the restic
 environment (RESTIC_REPOSITORY, RESTIC_PASSWORD_FILE, ...). Must run as root.
 
-Example: $PROG exec restic snapshots
+Example: $PROG exec sh -c 'echo "\$RESTIC_REPOSITORY"'
+
+A restic command does not need exec: $PROG snapshots works the same.
 EOT
 }
 
@@ -321,6 +327,26 @@ cmd_shell() {
   exec "${SHELL:-/bin/bash}"
 }
 
+# A restic command that is not one of ours runs as is, with the environment loaded.
+# backup, prune and check are jobs here, and forget is what the prune job does:
+# run raw they would skip the hooks, the lock and the status file.
+cmd_restic() {
+  case $1 in
+    backup|prune|check)
+      log "'$1' is a job here: use '$PROG run $1' (hooks, lock, status file)," \
+        "or '$PROG exec restic $1' for a plain restic run" ;;
+    forget)
+      log "'forget' is part of the prune job: use '$PROG run prune' (RESTIC_KEEP_*)," \
+        "or '$PROG exec restic forget' for a plain restic run" ;;
+    *)
+      need_root
+      load_env
+      require_restic; require_mount
+      exec restic "$@" ;;
+  esac
+  return 2
+}
+
 ORIG_ARGS=$*
 case ${1:-} in
   run)             shift; cmd_run "$@" ;;
@@ -330,5 +356,6 @@ case ${1:-} in
   help|-h|--help)  usage ;;
   -V|--version)    echo "$PROG $VERSION" ;;
   "")              usage >&2; exit 2 ;;
-  *)               log "unknown command: $1"; usage >&2; exit 2 ;;
+  -*)              log "unknown option: $1"; usage >&2; exit 2 ;;
+  *)               cmd_restic "$@" ;;
 esac

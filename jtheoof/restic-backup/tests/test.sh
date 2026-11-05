@@ -21,6 +21,9 @@ if [[ ${RB_TEST_INNER:-} != 1 ]]; then
   out=$("$SCRIPT" run backup 2>&1); rc=$?
   check "refuses to run as non-root" has "$out" "must run as root"
   check "non-root exit status is 1" is "$rc" 1
+  out=$("$SCRIPT" snapshots 2>&1); rc=$?
+  check "a passed command also needs root" has "$out" "must run as root"
+  check "a passed command as non-root exits 1" is "$rc" 1
   RB_OUTER_PASS=$PASS RB_OUTER_FAIL=$FAIL RB_TEST_INNER=1 exec unshare -rm "$0" "$@"
 fi
 PASS=${RB_OUTER_PASS:-0}; FAIL=${RB_OUTER_FAIL:-0}
@@ -67,7 +70,6 @@ out=$("$SCRIPT" --help); check "--help lists the run command" has "$out" "run <j
 check "--help mentions the hooks man page" has "$out" "restic-backup-hooks(7)"
 out=$("$SCRIPT" run --help); rc=$?; check "run --help succeeds" is "$rc" 0
 check "run --help lists the jobs" has "$out" "check    verify the repository"
-"$SCRIPT" bogus >/dev/null 2>&1; check "unknown command exits 2" is "$?" 2
 "$SCRIPT" >/dev/null 2>&1; check "no command exits 2" is "$?" 2
 rb run bogus >/dev/null 2>&1; check "unknown job exits 2" is "$?" 2
 
@@ -195,6 +197,29 @@ setup; echo 'RESTIC_REQUIRE_MOUNT=/definitely/not/mounted' >> "$ENVF"; out=$(rb 
 check "exec obeys the mount guard" is "$rc" 1
 setup; rb exec >/dev/null 2>&1; check "exec without a command exits 2" is "$?" 2
 setup; out=$(SHELL=/bin/sh rb shell </dev/null 2>&1); check "shell starts and prints a banner" has "$out" "environment loaded"
+
+# --- restic commands passed through ---------------------------------------------
+setup; out=$(rb snapshots 2>&1); rc=$?
+check "an unknown command runs restic" has "$(log)" "ARGS: snapshots"
+check "the passed command sees the environment" has "$(log)" "REPO=/fake/repo"
+check "the passed command exits 0" is "$rc" 0
+setup; rb restore latest --target /x --include /etc/fstab >/dev/null 2>&1
+check "arguments are passed on unchanged" has "$(log)" "ARGS: restore latest --target /x --include /etc/fstab"
+setup; FAKE_RESTIC_EXIT=3 rb snapshots >/dev/null 2>&1; check "the exit status of restic is kept" is "$?" 3
+setup; echo 'RESTIC_REQUIRE_MOUNT=/definitely/not/mounted' >> "$ENVF"; rb snapshots >/dev/null 2>&1; rc=$?
+check "a passed command obeys the mount guard" is "$rc" 1
+check "a refused passed command does not run restic" is "$(log)" ""
+for job in backup prune check forget; do
+  setup; out=$(rb "$job" 2>&1); rc=$?
+  check "$job is not passed to restic" is "$(log)" ""
+  check "$job exits 2" is "$rc" 2
+  check "$job points to the job" has "$out" "restic-backup "
+done
+setup; out=$(rb backup 2>&1); check "backup suggests run backup" has "$out" "run backup"
+setup; out=$(rb forget 2>&1); check "forget suggests run prune" has "$out" "run prune"
+setup; out=$(rb --bogus 2>&1); rc=$?; check "an unknown option exits 2" is "$rc" 2
+check "an unknown option is not passed to restic" is "$(log)" ""
+setup; out=$("$SCRIPT" --help); check "--help mentions the pass-through" has "$out" "passed to restic"
 
 # --- the shipped SQLite example ------------------------------------------------
 if command -v sqlite3 >/dev/null; then

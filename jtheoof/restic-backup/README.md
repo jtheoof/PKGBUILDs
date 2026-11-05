@@ -13,7 +13,7 @@ in hooks.
 
 ```sh
 sudoedit /etc/restic/env              # set RESTIC_REPOSITORY
-sudo restic-backup exec restic init   # new repository only
+sudo restic-backup init              # new repository only
 sudo restic-backup run backup         # first backup, by hand
 restic-backup status
 sudo systemctl enable --now restic-backup.timer restic-backup-prune.timer restic-backup-check.timer
@@ -29,7 +29,8 @@ cannot be opened.
 |---|---|
 | `restic-backup run backup\|prune\|check` | run a job (what the timers call) |
 | `restic-backup status` | last result of each job |
-| `restic-backup exec COMMAND...` | run a command with the restic environment |
+| `restic-backup snapshots`, `ls`, `restore`, ... | any other command runs restic with the environment loaded (not `backup`, `prune`, `check`, `forget`: use `run`) |
+| `restic-backup exec COMMAND...` | run any command with the restic environment |
 | `restic-backup shell` | shell with the restic environment loaded |
 
 ## Documentation

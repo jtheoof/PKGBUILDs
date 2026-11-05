@@ -10,6 +10,7 @@ restic-backup - scheduled restic backups with hooks, a mount guard and status fi
 *restic-backup* *status*++
 *restic-backup* *exec* _command_ [_argument_...]++
 *restic-backup* *shell*++
+*restic-backup* _restic-command_ [_argument_...]++
 *restic-backup* [*-h*|*--help*] [*-V*|*--version*]
 
 # DESCRIPTION
@@ -42,11 +43,22 @@ automatically. They call *restic-backup run*.
 
 *exec* _command_ [_argument_...]
 	Load the settings, check the mount guard and run _command_ with the restic
-	environment. Typically *restic-backup exec restic snapshots*. Must run as root.
+	environment. For restic itself, the shorter form below does the same. Must run
+	as root.
 
 *shell*
 	Check the mount guard and start a shell (*$SHELL*) with the restic environment
 	loaded, so that plain *restic* commands work. Must run as root.
+
+_restic-command_ [_argument_...]
+	Any other word is taken as a restic command: *restic-backup snapshots*,
+	*restic-backup restore latest --target /var/tmp/restore --include /etc/fstab*,
+	*restic-backup stats*. The settings are loaded, the mount guard is checked and
+	restic is run with the arguments unchanged, as root; its exit status is returned.
+	*backup*, *prune* and *check* are jobs here, and *forget* is what the *prune* job
+	runs: passed to restic as they are, they would skip the hooks, the lock and the
+	status file. They are refused with exit status 2 and a hint. Use *run* _job_, or
+	*exec restic* _command_ for a plain restic run.
 
 *-h*, *--help*, *help*
 	Print a short usage text. *restic-backup run --help* and the same flag on the
@@ -108,7 +120,7 @@ only when there is something to say.
 	The job failed, a guard refused, or *status* found a failed job.
 
 *2*
-	Usage error.
+	Usage error, an unknown option, or a job name that must go through *run*.
 
 # FILES
 
@@ -147,7 +159,7 @@ Start the first backup by hand and look at the result:
 
 List the snapshots, or work interactively:
 
-	sudo restic-backup exec restic snapshots++
+	sudo restic-backup snapshots++
 	sudo restic-backup shell
 
 Enable the schedule:

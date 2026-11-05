@@ -11,8 +11,8 @@ MSG
   cat <<'MSG'
 ==> restic-backup: one-time setup
     1. Set RESTIC_REPOSITORY (and review the other settings) in /etc/restic/env.
-    2. New repository only:  sudo restic-backup exec restic init
-    3. Check access:         sudo restic-backup exec restic snapshots
+    2. New repository only:  sudo restic-backup init
+    3. Check access:         sudo restic-backup snapshots
     4. First backup by hand: sudo restic-backup run backup
     5. Enable the schedule:
          sudo systemctl enable --now restic-backup.timer \
