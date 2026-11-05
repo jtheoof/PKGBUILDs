@@ -2,6 +2,6 @@
 # Anything not listed here is never built or published (putioarr is
 # deliberately left out).
 jtheoof/vtrgb-nord
-aur/gandi-automatic-dns-systemd
-aur/lgtvremote-cli
+jtheoof/gandi-automatic-dns-systemd
+jtheoof/lgtvremote-cli
 jtheoof/restic-backup

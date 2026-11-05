@@ -5,8 +5,7 @@ My own PKGBUILDs and patches for Arch Linux.
 
 | Directory | What |
 |---|---|
-| `aur/` | AUR packages, or companions and overrides of third-party projects |
-| `jtheoof/` | my own packages with no upstream |
+| `jtheoof/` | my own packages and PKGBUILDs |
 
 Private, machine-specific packages live in a separate private repository.
 
