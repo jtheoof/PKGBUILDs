@@ -5,7 +5,9 @@
 # Edit the list of databases below. Copies go to $RESTIC_STAGING_DIR/<original path>,
 # which is part of the backup when RESTIC_BACKUP_PATHS includes / (the default).
 #
-# -readonly: never let root create -wal/-shm files that would lock out the service user.
+# -readonly: the database itself is never modified. If it is in WAL mode and idle,
+# SQLite still creates -wal and -shm files next to it, owned by the database's owner
+# when this runs as root. See restic-backup-hooks(7).
 set -eu
 
 for db in /var/lib/myapp/*.db; do

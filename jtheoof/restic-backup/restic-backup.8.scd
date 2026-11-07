@@ -77,7 +77,8 @@ _restic-command_ [_argument_...]
 *prune*
 	Runs *restic forget --prune* for *RESTIC_HOST* with *--keep-daily*,
 	*--keep-weekly* and *--keep-monthly* set from *RESTIC_KEEP_DAILY*,
-	*RESTIC_KEEP_WEEKLY* and *RESTIC_KEEP_MONTHLY*.
+	*RESTIC_KEEP_WEEKLY* and *RESTIC_KEEP_MONTHLY*, and one *--keep-tag* for each tag in
+	*RESTIC_KEEP_TAGS*.
 
 *check*
 	Runs *restic check* with *--read-data-subset* set to *RESTIC_CHECK_SUBSET*.

@@ -2,7 +2,7 @@
 
 pkgname=restic-backup
 pkgver=1.0.0
-pkgrel=1
+pkgrel=2
 pkgdesc='Scheduled restic backups with hooks, a mount guard, status files and systemd timers'
 arch=(any)
 url='https://github.com/jtheoof/PKGBUILDs'
@@ -36,11 +36,11 @@ source=(LICENSE
         example-recovery)
 sha256sums=('376f25097ddcaa268a51c4de12cc7c53ff8c11aeba9652e8d78b32bffc0b802f'
             'b8f82612d5dd9c9d7007dc7556b2a23aa2517f15da6c4d8cb5bdb8022eb4d80e'
-            '78fb58faae755840ddc0b138ff20f3dcf55b8ab633f502f85a05cacc6be78dac'
-            '9b3138bb8e943bb60027c8797a1be6126ff9d5c53310077ea7614b4d73e746fd'
-            '7bd72169f35cfdbe26f16d5414bfa8a22aca159cbca91f2b605f51232f3ea89b'
-            'd036b9a9c9be4d2b50507addc329f69994b1ef717209a9d00b79052b1a39849a'
-            'd6d08768623fcd68d1d263734a0022aa4f3b1d7e44a974025b0227331cc0f996'
+            'd8260c8f03e8093a68c7f99e1d03d456d3b361fa391b3ec8736b0890efbda31b'
+            '49753e3cdbbb892d14d5c3a92c0c036484eed76c057ca6341b0fba879359ee05'
+            'ee0b6cd7293f5eb777948fe407024c634a85070747011406a09b2c4012358c2a'
+            '357d73bbcf5d3ae3d4b6ddef890c5a28269caf516b9cb551f1ba21a5ecb24fec'
+            'bce2ea7850c3a2d0e3e8ef05c4784f4e065a40624e2c3b6ba616b17cc729c538'
             '64710b3247f05c013291abdb98673623c4a12c7ab04092717d4ff0b10c08dd96'
             '58e4664af8ba274b1b01c8e0dc2044f1921e6bc7bfe32a7eecb71c3d60733348'
             'a522767377bc356d03f8da7a18a87acb4213f978497530119def803e2b602538'
@@ -49,7 +49,7 @@ sha256sums=('376f25097ddcaa268a51c4de12cc7c53ff8c11aeba9652e8d78b32bffc0b802f'
             'fdb84309a7c2f37bc113c69f792852ea1d9b21f7d338480fb7d95cbc794fb97e'
             'd9c1029fa94e7983f6a080ebfd422f83f673c82cf8c3cf05935c53eb90dddb66'
             '81b4723d5516c8622075ad7c24bcd8b32375553bc7ce5f65449720571d542486'
-            'cb9b43fc64d0d777598a81f472b60e86b6d7b2e0b4d6a90e1d273e540c2131f5'
+            '1c7e8d11be357b8b22ff70900e8eb7415e20da8f19f31dbe1d378a5e756a311e'
             'c14c213605965d99fdbe494900f83ef563c028faae0201cc459057c7abaea7d0'
             '5001d04ac1e5125b3bd462e92855305b6134d8e87f597853cba5de408f9031dd'
             'd31098733a176e40dc6dda9a1808bc2eafefd6b13e1860506530375c104858e3'

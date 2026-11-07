@@ -46,7 +46,7 @@ Run one job under a lock, with its hooks, and record the result.
 
 Jobs:
   backup   back up RESTIC_BACKUP_PATHS (pre-backup and post-backup hooks)
-  prune    forget old snapshots and prune (RESTIC_KEEP_DAILY/WEEKLY/MONTHLY)
+  prune    forget old snapshots and prune (RESTIC_KEEP_*)
   check    verify the repository, reading RESTIC_CHECK_SUBSET of the data
 
 Exit status: 0 ok or warning, 1 failed, 2 usage error.
@@ -117,6 +117,7 @@ load_env() {
   set_default RESTIC_KEEP_DAILY 7
   set_default RESTIC_KEEP_WEEKLY 4
   set_default RESTIC_KEEP_MONTHLY 6
+  set_default RESTIC_KEEP_TAGS keep
   set_default RESTIC_CHECK_SUBSET 10%
 }
 
@@ -176,7 +177,8 @@ run_hooks() { # event, for example pre-backup
 }
 
 run_restic() { # job
-  local -a args=() paths=() tags=()
+  local -a args=() paths=() tags=() keep=()
+  local tag
   case $1 in
     backup)
       read -ra args <<<"$RESTIC_BACKUP_ARGS"
@@ -190,8 +192,10 @@ run_restic() { # job
       restic backup ${args[@]+"${args[@]}"} ${tags[@]+"${tags[@]}"} --host "$RESTIC_HOST" "${paths[@]}"
       ;;
     prune)
+      for tag in $RESTIC_KEEP_TAGS; do keep+=(--keep-tag "$tag"); done
       restic forget --prune --host "$RESTIC_HOST" \
-        --keep-daily "$RESTIC_KEEP_DAILY" --keep-weekly "$RESTIC_KEEP_WEEKLY" --keep-monthly "$RESTIC_KEEP_MONTHLY"
+        --keep-daily "$RESTIC_KEEP_DAILY" --keep-weekly "$RESTIC_KEEP_WEEKLY" --keep-monthly "$RESTIC_KEEP_MONTHLY" \
+        ${keep[@]+"${keep[@]}"}
       ;;
     check)
       restic check --read-data-subset="$RESTIC_CHECK_SUBSET"

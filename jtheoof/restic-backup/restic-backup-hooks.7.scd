@@ -79,6 +79,17 @@ Hooks that produce files, such as database dumps, should write them below
 backup of */* includes. Remove copies you no longer want yourself: nothing cleans the
 directory.
 
+# SQLITE DATABASES IN WAL MODE
+
+Opening a SQLite database that is in WAL mode and that no program has open creates a
+*-wal* and a *-shm* file next to it, even for a read-only copy (*sqlite3 -readonly*).
+When a hook runs as root, SQLite gives the *-shm* file to the database's owner, so the
+service that owns the database can still use it. The copy fails if those files cannot
+be created, which happens when the job runs in a unit with a read-only filesystem
+(for example *ProtectSystem=strict*) and the database is idle. Either add the
+database's directory to *ReadWritePaths=* or do not sandbox the job. The units
+shipped by the package are not sandboxed.
+
 # EXAMPLES
 
 A hook that copies SQLite databases consistently:

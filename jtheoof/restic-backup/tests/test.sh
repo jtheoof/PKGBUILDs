@@ -83,6 +83,12 @@ setup; rb run prune >/dev/null 2>&1
 check "prune command line" has "$(log)" "ARGS: forget --prune --host testhost --keep-daily 7 --keep-weekly 4 --keep-monthly 6"
 setup; echo 'RESTIC_KEEP_DAILY=3' >> "$ENVF"; rb run prune >/dev/null 2>&1
 check "retention can be overridden" has "$(log)" "--keep-daily 3 --keep-weekly 4"
+setup; rb run prune >/dev/null 2>&1
+check "snapshots tagged keep are protected by default" has "$(log)" "--keep-tag keep"
+setup; echo 'RESTIC_KEEP_TAGS="keep important"' >> "$ENVF"; rb run prune >/dev/null 2>&1
+check "several tags can be protected" has "$(log)" "--keep-tag keep --keep-tag important"
+setup; echo 'RESTIC_KEEP_TAGS=' >> "$ENVF"; rb run prune >/dev/null 2>&1
+check "protection can be switched off" hasnt "$(log)" "--keep-tag"
 setup; rb run check >/dev/null 2>&1
 check "check command line" has "$(log)" "ARGS: check --read-data-subset=10%"
 setup; sed -i '/RESTIC_HOST/d' "$ENVF"; rb run backup >/dev/null 2>&1
@@ -230,6 +236,12 @@ if command -v sqlite3 >/dev/null; then
   rb run backup >/dev/null 2>&1
   copy=$C/state/staging$C/data/app.db
   check "sqlite example stages a consistent copy" is "$(sqlite3 -readonly "$copy" 'select count(*) from t' 2>&1)" 3
+  setup; mkdir -p "$C/data"
+  sqlite3 "$C/data/app.db" 'pragma journal_mode=wal; create table t(a); insert into t values (1),(2),(3),(4);' >/dev/null
+  sed "s#/var/lib/myapp#$C/data#" "$HERE/../example-sqlite" > "$C/hooks.sqlite"
+  hook pre-backup 10-sqlite "$(sed 1d "$C/hooks.sqlite")"
+  rb run backup >/dev/null 2>&1
+  check "sqlite example copies an idle WAL database" is "$(sqlite3 -readonly "$C/state/staging$C/data/app.db" 'select count(*) from t' 2>&1)" 4
 else
   printf 'skip sqlite example (sqlite3 not installed)\n'
 fi

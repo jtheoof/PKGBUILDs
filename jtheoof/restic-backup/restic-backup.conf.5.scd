@@ -64,6 +64,11 @@ by whitespace and cannot contain quoted spaces.
 	of the three rules keeps it. Periods count snapshots, not calendar time, so a
 	long outage of the backup does not expire old snapshots. *0* disables a rule.
 
+*RESTIC_KEEP_TAGS*
+	Snapshots with one of these tags (whitespace separated) are never forgotten,
+	whatever the three rules say. Default: *keep*. Empty for none. Protect a snapshot
+	with *restic-backup tag --add keep* _snapshot-id_.
+
 *RESTIC_CHECK_SUBSET*
 	Share of the repository data that *restic check* re-reads, for example *10%* or
 	*1/12*. Default: *10%*.
