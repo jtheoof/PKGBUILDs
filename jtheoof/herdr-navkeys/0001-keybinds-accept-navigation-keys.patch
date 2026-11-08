@@ -1,0 +1,102 @@
+diff --git a/docs/next/website/src/content/docs/socket-api.mdx b/docs/next/website/src/content/docs/socket-api.mdx
+index 547415a6..ca2065cc 100644
+--- a/docs/next/website/src/content/docs/socket-api.mdx
++++ b/docs/next/website/src/content/docs/socket-api.mdx
+@@ -135,7 +135,8 @@ omitted. `pane.move` always requires the source `pane_id`.
+ `pane.send_keys` and `pane.send_input.keys` accept Herdr key-combo strings:
+ plain printable keys, special keys like `enter` and `esc`, modifier chords
+ like `ctrl+h`, `control+j`, `alt+x`, and `shift+tab`, function keys like
+-`f1`, and named punctuation like `minus` and `plus`. They do not accept
++`f1`, navigation keys (`home`, `end`, `pageup`, `pagedown`, `insert`,
++`delete`), and named punctuation like `minus` and `plus`. They do not accept
+ `prefix+` binding strings.
+ 
+ On macOS, `pane.send_input` (used by `pane run`) and `agent.start` check the terminal's current canonical input limit before accepting a command into the input queue. An oversized encoded line, including Enter, is rejected in full; wait for the shell prompt and retry. Multiple short lines and raw-mode input remain supported. Successful responses still acknowledge queue admission, not command execution. This check covers the current submission only: it cannot inspect an earlier incomplete line or guarantee the terminal mode will remain unchanged while input is queued.
+diff --git a/src/config/keybinds.rs b/src/config/keybinds.rs
+index 276764a6..0741837d 100644
+--- a/src/config/keybinds.rs
++++ b/src/config/keybinds.rs
+@@ -1323,6 +1323,12 @@ pub(crate) fn parse_key_combo(s: &str) -> Option<KeyCombo> {
+         "right" => KeyCode::Right,
+         "up" => KeyCode::Up,
+         "down" => KeyCode::Down,
++        "home" => KeyCode::Home,
++        "end" => KeyCode::End,
++        "pageup" | "page_up" | "pgup" => KeyCode::PageUp,
++        "pagedown" | "page_down" | "pgdn" | "pgdown" => KeyCode::PageDown,
++        "insert" | "ins" => KeyCode::Insert,
++        "delete" | "del" => KeyCode::Delete,
+         "minus" => KeyCode::Char('-'),
+         "comma" => KeyCode::Char(','),
+         "period" => KeyCode::Char('.'),
+@@ -1694,6 +1700,70 @@ next_tab = "prefix+n"
+         assert!(kb.remove_worktree.bindings.is_empty());
+     }
+ 
++    #[test]
++    fn parses_navigation_keys_with_aliases_and_modifiers() {
++        let cases = [
++            ("home", KeyCode::Home),
++            ("end", KeyCode::End),
++            ("pageup", KeyCode::PageUp),
++            ("page_up", KeyCode::PageUp),
++            ("pgup", KeyCode::PageUp),
++            ("PageDown", KeyCode::PageDown),
++            ("page_down", KeyCode::PageDown),
++            ("pgdn", KeyCode::PageDown),
++            ("insert", KeyCode::Insert),
++            ("ins", KeyCode::Insert),
++            ("delete", KeyCode::Delete),
++            ("del", KeyCode::Delete),
++        ];
++        for (raw, code) in cases {
++            assert_eq!(
++                parse_key_combo(raw),
++                Some((code, KeyModifiers::empty())),
++                "{raw}"
++            );
++        }
++        assert_eq!(
++            parse_key_combo("shift+pageup"),
++            Some((KeyCode::PageUp, KeyModifiers::SHIFT))
++        );
++        assert_eq!(
++            parse_key_combo("ctrl+alt+delete"),
++            Some((
++                KeyCode::Delete,
++                KeyModifiers::CONTROL | KeyModifiers::ALT
++            ))
++        );
++    }
++
++    #[test]
++    fn navigation_keys_round_trip_through_format_key_combo() {
++        for code in [
++            KeyCode::Home,
++            KeyCode::End,
++            KeyCode::PageUp,
++            KeyCode::PageDown,
++            KeyCode::Insert,
++            KeyCode::Delete,
++        ] {
++            let combo = (code, KeyModifiers::SHIFT);
++            assert_eq!(parse_key_combo(&format_key_combo(combo)), Some(combo));
++        }
++    }
++
++    #[test]
++    fn copy_mode_accepts_shift_pageup_binding() {
++        let mut config = Config::default();
++        config.keys.copy_mode = BindingConfig::Many(vec![
++            "prefix+[".to_string(),
++            "shift+pageup".to_string(),
++        ]);
++        let (_, diagnostics) = config
++            .live_keybinds_with_diagnostics()
++            .expect("keybinds should validate");
++        assert!(diagnostics.is_empty(), "{diagnostics:?}");
++    }
++
+     #[test]
+     fn copy_mode_uses_tmux_prefix_bracket_by_default() {
+         let kb = Config::default().keybinds();

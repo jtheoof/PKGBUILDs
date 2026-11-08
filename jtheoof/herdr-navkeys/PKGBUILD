@@ -1,0 +1,99 @@
+# Maintainer: Jeremy Attali <contact@jtheoof.me>
+#
+# herdr built from source with a small patch that lets the keybinding parser
+# (and pane.send_keys) accept home, end, pageup, pagedown, insert and delete.
+# Upstream issue: https://github.com/herdrdev/herdr/issues/4892
+# Drop this package once upstream ships the fix and use herdr-bin again.
+
+_upstream=herdr
+pkgname=herdr-navkeys
+pkgver=0.9.5
+pkgrel=1
+pkgdesc='Terminal workspace manager for AI coding agents, with PageUp/PageDown/Home/End/Insert/Delete keybindings'
+arch=('x86_64' 'aarch64')
+url='https://github.com/herdrdev/herdr'
+license=('AGPL-3.0-or-later')
+depends=('gcc-libs' 'glibc')
+makedepends=('cargo' 'git')
+provides=("herdr=${pkgver}")
+conflicts=('herdr' 'herdr-bin')
+options=('!debug')
+# herdr's vendored libghostty-vt needs exactly zig 0.16.0 (zig 0.17 removed
+# std.Build.build_root), and extra/zig is newer. Use the official toolchain
+# tarball as a build-time source instead of an AUR zig0.16 makedepends, which
+# the CI container cannot resolve.
+_zigver=0.16.0
+source=("${_upstream}-${pkgver}.tar.gz::https://github.com/herdrdev/herdr/archive/refs/tags/v${pkgver}.tar.gz"
+        '0001-keybinds-accept-navigation-keys.patch')
+source_x86_64=("https://ziglang.org/download/${_zigver}/zig-x86_64-linux-${_zigver}.tar.xz")
+source_aarch64=("https://ziglang.org/download/${_zigver}/zig-aarch64-linux-${_zigver}.tar.xz")
+sha256sums=('a2486b09a8153630f6a19e72606ba1c961a6194bce13c09cba67ccce5e4252de'
+            'b89f7629df1cb5d3b5be9c9ef4ca4e329b1b106cb06a868f423992a41ff64c47')
+sha256sums_x86_64=('70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00')
+sha256sums_aarch64=('ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17')
+
+_zig_env() {
+  export ZIG="${srcdir}/zig-${CARCH}-linux-${_zigver}/zig"
+  export PATH="${ZIG%/*}:${PATH}"
+  export ZIG_GLOBAL_CACHE_DIR="${srcdir}/zig-cache"
+  export CARGO_HOME="${srcdir}/cargo-home"
+}
+
+prepare() {
+  cd "${_upstream}-${pkgver}"
+  _zig_env
+
+  patch -Np1 -i "${srcdir}/0001-keybinds-accept-navigation-keys.patch"
+
+  cargo fetch --locked --target "${CARCH}-unknown-linux-gnu"
+
+  # libghostty-vt pulls its zig dependencies from the network; retry a few times.
+  cd vendor/libghostty-vt
+  local attempt
+  for attempt in 1 2 3; do
+    if "${ZIG}" build --fetch=all; then
+      return 0
+    fi
+    if (( attempt < 3 )); then
+      sleep 2
+    fi
+  done
+  return 1
+}
+
+build() {
+  cd "${_upstream}-${pkgver}"
+  _zig_env
+
+  export HERDR_BUILD_CHANNEL=stable
+  export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=${srcdir}=/usr/src/debug/${pkgname}"
+  export CARGO_TARGET_DIR=target
+
+  cargo build --release --frozen
+}
+
+check() {
+  cd "${_upstream}-${pkgver}"
+  _zig_env
+
+  export CARGO_TARGET_DIR=target
+
+  # Only the tests touching the patched parser: the full suite needs a PTY
+  # and takes long.
+  cargo test --release --frozen -- navigation_keys copy_mode_accepts_shift_pageup
+}
+
+package() {
+  cd "${_upstream}-${pkgver}"
+
+  install -Dm755 target/release/herdr "${pkgdir}/usr/bin/herdr"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+
+  install -d "${pkgdir}/usr/share/bash-completion/completions"
+  install -d "${pkgdir}/usr/share/fish/vendor_completions.d"
+  install -d "${pkgdir}/usr/share/zsh/site-functions"
+  target/release/herdr completion bash > "${pkgdir}/usr/share/bash-completion/completions/herdr"
+  target/release/herdr completion fish > "${pkgdir}/usr/share/fish/vendor_completions.d/herdr.fish"
+  target/release/herdr completion zsh > "${pkgdir}/usr/share/zsh/site-functions/_herdr"
+}
