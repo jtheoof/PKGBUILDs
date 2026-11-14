@@ -1,0 +1,82 @@
+# Maintainer: Jeremy Attali <contact@jtheoof.me>
+#
+# nicotine-eve built from the latest master of the jtheoof fork (upstream
+# isomerc/nicotine plus Hyprland Wayland-native previews). Based on the
+# nicotine-eve AUR PKGBUILD.
+#
+#   makepkg -si
+# Build another branch, or a local checkout (commits only; uncommitted
+# changes are not picked up):
+#   _branch=some-branch makepkg -si
+#   _repo=~/dev/github.com/isomerc/nicotine _branch=my-branch makepkg -si
+
+pkgname=nicotine-eve-git
+_pkgname=nicotine
+pkgver=0.6.0.r17.gcf7eeee
+pkgrel=1
+pkgdesc='High-performance EVE Online multiboxing and client management tool (git)'
+arch=('x86_64')
+url='https://github.com/jtheoof/nicotine'
+license=('MIT')
+depends=(
+  'alsa-lib'
+  'gcc-libs'
+  'glibc'
+  'hicolor-icon-theme'
+  'libxkbcommon'
+  'mesa'  # libgbm: GPU buffers for zero-copy previews
+  'vulkan-icd-loader'
+  'wayland'
+  'wmctrl'
+)
+makedepends=('cargo' 'git')
+optdepends=(
+  'hyprland: Hyprland backend with Wayland-native previews'
+  'fontconfig: preview_font by family name'
+)
+options=('!lto')
+provides=("nicotine-eve=${pkgver%%.r*}")
+# nicotine+ also ships /usr/bin/nicotine.
+conflicts=('nicotine-eve' 'nicotine+')
+
+: "${_repo:=https://github.com/jtheoof/nicotine.git}"
+: "${_branch:=master}"
+source=("$_pkgname::git+${_repo/#\//file:///}#branch=$_branch")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$_pkgname"
+  git describe --long --tags --abbrev=7 | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd "$_pkgname"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$_pkgname"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release --bin Nicotine
+}
+
+check() {
+  cd "$_pkgname"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo test --frozen --bin Nicotine
+}
+
+package() {
+  cd "$_pkgname"
+  install -Dm755 target/release/Nicotine "$pkgdir/usr/bin/Nicotine"
+  ln -s Nicotine "$pkgdir/usr/bin/nicotine"
+
+  install -Dm644 assets/nicotine.desktop -t "$pkgdir/usr/share/applications/"
+  install -Dm644 assets/icon.png "$pkgdir/usr/share/icons/hicolor/256x256/apps/nicotine.png"
+
+  install -Dm644 config.toml "$pkgdir/usr/share/doc/$pkgname/config.toml.example"
+  install -Dm644 README.md -t "$pkgdir/usr/share/doc/$pkgname/"
+  install -Dm644 LICENSE.md "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
