@@ -1,0 +1,17 @@
+post_install() {
+  cat <<'MSG'
+==> logifast: per user, copy the example settings and start the daemon:
+      install -Dm644 /usr/share/doc/logifast/config.toml.example ~/.config/logifast/config.toml
+      systemctl --user enable --now logifast.service
+==> Then open "logifast" from your launcher (logifast-gui) to change colors.
+==> The udev rule gives the logged-in user access to Logitech receivers;
+    replug them (or log in again) if `logifast list` sees nodes it can't open.
+MSG
+}
+
+post_upgrade() {
+  cat <<'MSG'
+==> logifast: restart the daemon to pick up the new binary:
+      systemctl --user restart logifast.service
+MSG
+}
